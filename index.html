@@ -5,4 +5,56 @@
 // DEMO: Replace entries with actual results. Each record is one player's net win for a game and month.
 const results=[{month:'2026-11',name:'Алекс',game:'holdem',net:17500},{month:'2026-11',name:'Алекс',game:'omaha',net:-1500},{month:'2026-11',name:'Макс',game:'holdem',net:7500},{month:'2026-11',name:'Макс',game:'omaha',net:11000},{month:'2026-11',name:'Денис',game:'holdem',net:-2000},{month:'2026-11',name:'Денис',game:'omaha',net:13000},{month:'2026-11',name:'Роман',game:'holdem',net:9000},{month:'2026-11',name:'Роман',game:'omaha',net:-3000},{month:'2026-11',name:'Игорь',game:'holdem',net:2500},{month:'2026-11',name:'Игорь',game:'omaha',net:500}];
 const pastWinners=[];let game='all';const month=document.getElementById('month'),board=document.getElementById('leaderboard');const months=[...new Set(results.map(r=>r.month))].sort().reverse();const fmt=n=>new Intl.NumberFormat('ru-RU',{maximumFractionDigits:0}).format(n);function monthName(s){const [y,m]=s.split('-').map(Number);return new Date(y,m-1,1).toLocaleDateString('ru-RU',{month:'long',year:'numeric'})}months.forEach(m=>{const o=document.createElement('option');o.value=m;o.textContent=monthName(m);month.appendChild(o)});function render(){const map=new Map();results.filter(r=>r.month===month.value&&(game==='all'||r.game===game)).forEach(r=>map.set(r.name,(map.get(r.name)||0)+r.net));const sorted=[...map].sort((a,b)=>b[1]-a[1]);const leader=Math.max(0,...sorted.map(x=>x[1]));board.replaceChildren();if(!sorted.length){board.textContent='Пока нет результатов';return}sorted.forEach(([name,net],i)=>{const p=document.createElement('div');p.className='person';const line=document.createElement('div');line.className='line';const left=document.createElement('span');left.className='name';const rank=document.createElement('span');rank.className='place';rank.textContent=i===0?'🥇':i===1?'🥈':i===2?'🥉':`${i+1}.`;left.append(rank,document.createTextNode(name));const right=document.createElement('span');right.className='value'+(net<0?' negative':'');right.textContent=(net>0?'+':'')+fmt(net)+' ₽';line.append(left,right);const track=document.createElement('div');track.className='track';const fill=document.createElement('div');fill.className='fill';fill.style.width=(leader>0&&net>0?100*net/leader:0)+'%';track.append(fill);const detail=document.createElement('div');detail.className='details';detail.textContent=net>0&&leader>0?`${Math.round(net/leader*100)}% от результата лидера`:net<0?'Отрицательный результат':'0%';p.append(line,track,detail);board.append(p)})}document.querySelectorAll('[data-game]').forEach(b=>b.addEventListener('click',()=>{game=b.dataset.game;document.querySelectorAll('[data-game]').forEach(x=>x.classList.toggle('active',x===b));render()}));month.addEventListener('change',render);const w=document.getElementById('winners');if(pastWinners.length){w.replaceChildren();pastWinners.forEach(x=>{const d=document.createElement('p');d.className='winner';d.textContent=`🏆 ${monthName(x.month)} — ${x.name}`;w.append(d)})}render();
+
+const SUPABASE_URL = 'https://hrlxkohrlrtglpkdqkkw.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_bvGuE2FEe1EtJoXK6t9nQg_0zIz4D0o';
+
+async function loadRatings() {
+  try {
+    const headers = {
+      apikey: SUPABASE_KEY
+    };
+
+    const [playersResponse, ratingsResponse, winnersResponse] =
+      await Promise.all([
+        fetch(`${SUPABASE_URL}/rest/v1/players?select=id,name`, { headers }),
+        fetch(`${SUPABASE_URL}/rest/v1/ratings?select=month,game,profit,player_id`, { headers }),
+        fetch(`${SUPABASE_URL}/rest/v1/winners?select=month,profit,player_id`, { headers })
+      ]);
+
+    if (!playersResponse.ok || !ratingsResponse.ok || !winnersResponse.ok) {
+      throw new Error('Ошибка загрузки данных');
+    }
+
+    const players = await playersResponse.json();
+    const ratings = await ratingsResponse.json();
+    const winners = await winnersResponse.json();
+
+    const names = Object.fromEntries(
+      players.map(p => [p.id, p.name])
+    );
+
+    results.length = 0;
+    results.push(...ratings.map(r => ({
+      month: r.month,
+      name: names[r.player_id] || 'Игрок',
+      game: r.game,
+      net: Number(r.profit)
+    })));
+
+    pastWinners.length = 0;
+    pastWinners.push(...winners.map(w => ({
+      month: w.month,
+      name: names[w.player_id] || 'Игрок',
+      profit: Number(w.profit)
+    })));
+
+    if (typeof render === 'function') render();
+  } catch (error) {
+    console.error('Supabase:', error);
+  }
+}
+
+loadRatings();
+
 </script></body></html>
