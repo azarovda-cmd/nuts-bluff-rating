@@ -1,186 +1,52 @@
 <!doctype html>
-<html lang="ru">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Nuts & Bluff — Гонка за кубком</title>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Nuts & Bluff — Гонка за кубком</title>
 <style>
 :root{color-scheme:dark;font-family:system-ui,-apple-system,Arial,sans-serif}*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top,#202c4a,#090d19 70%);color:#f5f6fb;min-height:100vh}.wrap{max-width:720px;margin:auto;padding:24px 16px 70px}.brand{letter-spacing:3px;color:#d6b977;font-weight:800;font-size:13px}.hero{margin:26px 0 18px;text-align:center}.cup{font-size:58px;filter:drop-shadow(0 0 18px #d8ad5177)}h1{font-size:32px;line-height:1.1;margin:8px 0;color:#ffe3a0}.sub{color:#aeb7ce;font-size:14px}.panel{background:#141d32dd;border:1px solid #33405d;border-radius:18px;padding:16px;margin:16px 0;box-shadow:0 10px 30px #0003}.top{display:flex;justify-content:space-between;align-items:center;gap:12px}.small{font-size:12px;color:#9eabc4}select{border:1px solid #44516c;background:#212d47;color:white;border-radius:10px;padding:9px;font-size:14px}.tabs{display:flex;gap:7px;margin:15px 0}.tabs button{flex:1;background:#27344f;color:#c9d4e8;border:1px solid #3b4c6b;border-radius:12px;padding:11px 3px;font-weight:700}.tabs button.active{background:linear-gradient(120deg,#b88630,#f3d28a);color:#191b27;border:0}.person{margin:15px 0 21px}.line{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}.name{font-weight:750}.place{display:inline-block;width:30px;color:#f5ce7b}.value{font-weight:800;color:#e9d09c}.track{height:13px;background:#29334c;border-radius:50px;overflow:hidden}.fill{height:100%;width:0;border-radius:50px;background:linear-gradient(90deg,#a67a34,#ffdc8a);transition:width .8s ease}.details{font-size:12px;color:#aeb8cd;margin-top:5px}.negative{color:#f18f9b}.footer{font-size:12px;color:#8d9bb6;text-align:center;margin-top:24px}.winner{font-weight:700;color:#f6d58c}h2{font-size:19px;margin:0 0 10px}.empty{color:#9eabc4;font-size:14px}.status{font-size:12px;color:#aeb8cd;margin-top:12px;line-height:1.5}.status.error{color:#ffabb5;white-space:pre-wrap;overflow-wrap:anywhere}.retry{border:1px solid #6a7797;border-radius:9px;background:#253554;color:#fff;padding:8px 12px;margin-top:8px;font:inherit;font-size:12px;cursor:pointer}.retry[disabled]{opacity:.6}.top b{font-size:17px}@media(max-width:380px){h1{font-size:28px}.top{align-items:flex-start}.tabs button{font-size:12px}}
-</style>
-</head>
-<body>
+</style></head><body>
 <main class="wrap">
 <div class="brand">♠ NUTS & BLUFF</div>
 <section class="hero"><div class="cup">🏆</div><h1>ГОНКА ЗА КУБКОМ</h1><div class="sub">Ежемесячный рейтинг игроков · переходящий приз</div></section>
-<section class="panel">
-  <div class="top"><div><b>Турнирная таблица</b><div class="small">Рейтинг по чистому выигрышу</div></div><label><span class="small">Месяц </span><select id="month" aria-label="Месяц рейтинга"></select></label></div>
-  <div class="tabs"><button type="button" data-game="all" class="active">Общий</button><button type="button" data-game="holdem">Холдем</button><button type="button" data-game="omaha">Омаха</button></div>
-  <div id="leaderboard" aria-live="polite">Загружаем результаты…</div>
-  <div id="status" class="status" role="status">Подключаемся к базе данных…</div>
-  <button id="retry" class="retry" type="button" hidden>Повторить загрузку</button>
-</section>
+<section class="panel"><div class="top"><div><b>Турнирная таблица</b><div class="small">Рейтинг по чистому выигрышу</div></div><label><span class="small">Месяц </span><select id="month" aria-label="Месяц рейтинга"></select></label></div>
+<div class="tabs"><button type="button" data-game="all" class="active">Общий</button><button type="button" data-game="holdem">Холдем</button><button type="button" data-game="omaha">Омаха</button></div>
+<div id="leaderboard" aria-live="polite">Загружаем результаты…</div>
+<div id="status" class="status" role="status">Подключаемся к базе данных…</div>
+<button id="retry" class="retry" type="button" hidden>Повторить загрузку</button></section>
 <section class="panel"><h2>🥇 Победители прошлых месяцев</h2><div id="winners" class="empty">Загружаем данные…</div></section>
-<div class="footer">Финиш — последний день месяца · Лидер = 100%<p>Данные рейтинга загружаются из базы Nuts & Bluff.</p></div>
-</main>
+<div class="footer">Финиш — последний день месяца · Лидер = 100%<p>Данные рейтинга загружаются из базы Nuts & Bluff.</p></div></main>
 <script>
 'use strict';
-const SUPABASE_URL = 'https://hrlxkohrlrtglpkdqkkw.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_bvGuE2FEe1EtJoXK6t9nQg_0zIz4D0o';
-
-const results = [];
-const pastWinners = [];
-let game = 'all';
-let dataLoaded = false;
-const month = document.getElementById('month');
-const board = document.getElementById('leaderboard');
-const winnersBox = document.getElementById('winners');
-const statusBox = document.getElementById('status');
-const retryButton = document.getElementById('retry');
-const fmt = n => new Intl.NumberFormat('ru-RU',{maximumFractionDigits:0}).format(n);
-function monthName(s) {
-  const [y,m] = s.split('-').map(Number);
-  return new Date(y,m-1,1).toLocaleDateString('ru-RU',{month:'long',year:'numeric'});
-}
-function currentMonth() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-}
-function refreshMonths() {
-  const previous = month.value;
-  const values = [...new Set(results.map(r => r.month).filter(Boolean))].sort().reverse();
-  if (!values.length) values.push(currentMonth());
-  month.replaceChildren();
-  for (const m of values) {
-    const option = document.createElement('option');
-    option.value = m;
-    option.textContent = monthName(m);
-    month.append(option);
-  }
-  month.value = values.includes(previous) ? previous : values[0];
-}
-function render() {
-  board.replaceChildren();
-  if (!dataLoaded) {
-    board.textContent = 'Загружаем результаты…';
-    return;
-  }
-  const map = new Map();
-  for (const r of results) {
-    if (r.month === month.value && (game === 'all' || r.game === game)) {
-      map.set(r.name, (map.get(r.name) || 0) + r.net);
-    }
-  }
-  const sorted = [...map].sort((a,b) => b[1]-a[1]);
-  const leader = Math.max(0, ...sorted.map(x => x[1]));
-  if (!sorted.length) {
-    board.textContent = 'Пока нет результатов за выбранный месяц и игру';
-    return;
-  }
-  sorted.forEach(([name,net],i) => {
-    const p = document.createElement('div'); p.className = 'person';
-    const line = document.createElement('div'); line.className = 'line';
-    const left = document.createElement('span'); left.className = 'name';
-    const rank = document.createElement('span'); rank.className = 'place';
-    rank.textContent = i===0?'🥇':i===1?'🥈':i===2?'🥉':`${i+1}.`;
-    left.append(rank, document.createTextNode(name));
-    const right = document.createElement('span');
-    right.className = 'value' + (net<0?' negative':'');
-    right.textContent = (net>0?'+':'') + fmt(net) + ' ₽';
-    line.append(left,right);
-    const track = document.createElement('div'); track.className = 'track';
-    const fill = document.createElement('div'); fill.className = 'fill';
-    fill.style.width = (leader>0 && net>0 ? 100*net/leader : 0) + '%';
-    track.append(fill);
-    const detail = document.createElement('div'); detail.className = 'details';
-    detail.textContent = net>0 && leader>0 ? `${Math.round(net/leader*100)}% от результата лидера` : net<0 ? 'Отрицательный результат' : '0%';
-    p.append(line,track,detail);
-    board.append(p);
-  });
-}
-function renderWinners() {
-  winnersBox.replaceChildren();
-  if (!pastWinners.length) {
-    winnersBox.textContent = 'Пока нет данных';
-    return;
-  }
-  for (const winner of [...pastWinners].sort((a,b)=>b.month.localeCompare(a.month))) {
-    const p = document.createElement('p');
-    p.className = 'winner';
-    p.textContent = `🏆 ${monthName(winner.month)} — ${winner.name}`;
-    winnersBox.append(p);
-  }
-}
-
-document.querySelectorAll('[data-game]').forEach(button => {
-  button.addEventListener('click', () => {
-    game = button.dataset.game;
-    document.querySelectorAll('[data-game]').forEach(x => x.classList.toggle('active', x===button));
-    render();
-  });
-});
-month.addEventListener('change', render);
-retryButton.addEventListener('click', loadRatings);
-
-async function fetchTable(table, columns) {
-  const url = `${SUPABASE_URL}/rest/v1/${table}?select=${encodeURIComponent(columns)}`;
-  const response = await fetch(url, {
-    method: 'GET',
-    headers: { apikey: SUPABASE_KEY, Accept: 'application/json' },
-    cache: 'no-store'
-  });
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(`${table}: HTTP ${response.status} — ${body.slice(0,400)}`);
-  }
-  const data = await response.json();
-  if (!Array.isArray(data)) throw new Error(`${table}: получен неожиданный ответ сервера`);
-  return data;
-}
-async function loadRatings() {
-  retryButton.disabled = true;
-  retryButton.hidden = true;
-  statusBox.className = 'status';
-  statusBox.textContent = 'Подключаемся к базе данных…';
-  try {
-    const [players, ratings, winners] = await Promise.all([
-      fetchTable('players','id,name'),
-      fetchTable('ratings','month,game,profit,player_id'),
-      fetchTable('winners','month,profit,player_id')
-    ]);
-    const names = Object.fromEntries(players.map(p => [String(p.id),p.name]));
-    const actualResults = ratings.map(r => ({
-      month: r.month,
-      name: names[String(r.player_id)] || 'Игрок',
-      game: String(r.game || '').toLowerCase(),
-      net: Number(r.profit)
-    })).filter(r => r.month && Number.isFinite(r.net));
-    const actualWinners = winners.map(w => ({
-      month: w.month,
-      name: names[String(w.player_id)] || 'Игрок',
-      profit: Number(w.profit)
-    })).filter(w => w.month);
-    results.splice(0,results.length,...actualResults);
-    pastWinners.splice(0,pastWinners.length,...actualWinners);
-    dataLoaded = true;
-    refreshMonths();
-    render();
-    renderWinners();
-    statusBox.textContent = `Данные загружены · записей рейтинга: ${ratings.length}`;
-  } catch (error) {
-    console.error('Ошибка Supabase:',error);
-    statusBox.className = 'status error';
-    statusBox.textContent = `Не удалось получить данные из Supabase. ${error.message || String(error)}`;
-    if (!dataLoaded) {
-      board.textContent = 'Не удалось загрузить рейтинг';
-      winnersBox.textContent = 'Нет соединения с базой';
-    }
-    retryButton.hidden = false;
-  } finally {
-    retryButton.disabled = false;
-  }
-}
-refreshMonths();
-loadRatings();
-</script>
-</body>
-</html>
+const SUPABASE_URL='https://hrlxkohrlrtglpkdqkkw.supabase.co';
+const SUPABASE_KEY='sb_publishable_bvGuE2FEe1EtJoXK6t9nQg_0zIz4D0o';
+const results=[];
+const pastWinners=[];
+let game='all';let dataLoaded=false;
+const month=document.getElementById('month');
+const board=document.getElementById('leaderboard');
+const winnersBox=document.getElementById('winners');
+const statusBox=document.getElementById('status');
+const retryButton=document.getElementById('retry');
+const fmt=n=>new Intl.NumberFormat('ru-RU',{maximumFractionDigits:0}).format(n);
+function monthName(s){const [y,m]=s.split('-').map(Number);return new Date(y,m-1,1).toLocaleDateString('ru-RU',{month:'long',year:'numeric'})}
+function currentMonth(){const now=new Date();return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`}
+function refreshMonths(){const previous=month.value;const values=[...new Set(results.map(r=>r.month).filter(Boolean))].sort().reverse();if(!values.length)values.push(currentMonth());month.replaceChildren();for(const m of values){const o=document.createElement('option');o.value=m;o.textContent=monthName(m);month.append(o)}month.value=values.includes(previous)?previous:values[0]}
+function render(){board.replaceChildren();if(!dataLoaded){board.textContent='Загружаем результаты…';return}const map=new Map();for(const r of results){if(r.month===month.value&&(game==='all'||r.game===game)){map.set(r.name,(map.get(r.name)||0)+r.net)}}const sorted=[...map].sort((a,b)=>b[1]-a[1]);const leader=Math.max(0,...sorted.map(x=>x[1]));if(!sorted.length){board.textContent='Пока нет результатов за выбранный месяц и игру';return}sorted.forEach(([name,net],i)=>{const p=document.createElement('div');p.className='person';const line=document.createElement('div');line.className='line';const left=document.createElement('span');left.className='name';const rank=document.createElement('span');rank.className='place';rank.textContent=i===0?'🥇':i===1?'🥈':i===2?'🥉':`${i+1}.`;left.append(rank,document.createTextNode(name));const right=document.createElement('span');right.className='value'+(net<0?' negative':'');right.textContent=(net>0?'+':'')+fmt(net)+' ₽';line.append(left,right);const track=document.createElement('div');track.className='track';const fill=document.createElement('div');fill.className='fill';fill.style.width=(leader>0&&net>0?100*net/leader:0)+'%';track.append(fill);const detail=document.createElement('div');detail.className='details';detail.textContent=net>0&&leader>0?`${Math.round(net/leader*100)}% от результата лидера`:net<0?'Отрицательный результат':'0%';p.append(line,track,detail);board.append(p)})}
+function renderWinners(){winnersBox.replaceChildren();if(!pastWinners.length){winnersBox.textContent='Пока нет победителей завершённых месяцев';return}for(const winner of [...pastWinners].sort((a,b)=>b.month.localeCompare(a.month))){const p=document.createElement('p');p.className='winner';p.textContent=`🏆 ${monthName(winner.month)} — ${winner.name}`;winnersBox.append(p)}}
+document.querySelectorAll('[data-game]').forEach(button=>button.addEventListener('click',()=>{game=button.dataset.game;document.querySelectorAll('[data-game]').forEach(x=>x.classList.toggle('active',x===button));render()}));
+month.addEventListener('change',render);
+retryButton.addEventListener('click',loadRatings);
+async function fetchTable(table,columns){const url=`${SUPABASE_URL}/rest/v1/${table}?select=${encodeURIComponent(columns)}`;const response=await fetch(url,{method:'GET',headers:{apikey:SUPABASE_KEY,Accept:'application/json'},cache:'no-store'});if(!response.ok){const body=await response.text();throw new Error(`${table}: HTTP ${response.status} — ${body.slice(0,400)}`)}const data=await response.json();if(!Array.isArray(data))throw new Error(`${table}: получен неожиданный ответ сервера`);return data}
+async function loadRatings(){retryButton.disabled=true;retryButton.hidden=true;statusBox.className='status';statusBox.textContent='Подключаемся к базе данных…';try{
+const [players,ratings,champions]=await Promise.all([
+fetchTable('players','id,name'),
+fetchTable('ratings','month,game,profit,player_id'),
+fetchTable('monthly_champions','month,player_id,name,total_profit')
+]);
+const names=Object.fromEntries(players.map(p=>[String(p.id),p.name]));
+const actualResults=ratings.map(r=>({month:r.month,name:names[String(r.player_id)]||'Игрок',game:String(r.game||'').toLowerCase(),net:Number(r.profit)})).filter(r=>r.month&&Number.isFinite(r.net));
+const actualWinners=champions.map(c=>({month:c.month,name:c.name||names[String(c.player_id)]||'Игрок',profit:Number(c.total_profit)})).filter(c=>c.month);
+results.splice(0,results.length,...actualResults);
+pastWinners.splice(0,pastWinners.length,...actualWinners);
+dataLoaded=true;refreshMonths();render();renderWinners();statusBox.textContent=`Данные загружены · записей рейтинга: ${ratings.length}`;
+}catch(error){console.error('Ошибка Supabase:',error);statusBox.className='status error';statusBox.textContent=`Не удалось получить данные из Supabase. ${error.message||String(error)}`;if(!dataLoaded){board.textContent='Не удалось загрузить рейтинг';winnersBox.textContent='Нет соединения с базой'}retryButton.hidden=false}finally{retryButton.disabled=false}}
+refreshMonths();loadRatings();
+</script></body></html>
